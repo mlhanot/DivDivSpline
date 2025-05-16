@@ -227,7 +227,7 @@ struct Mesh {
     std::array<size_t,3>{1,1,0}
   }};
   /// Mapping from the local faces of a cell to the local ordering in the tensor product (0 if this correspond to the edge component or if the vertex is a start of the standard edge, 1 otherwise)
-  static constexpr std::array<std::array<size_t,3>,6> iETtoSide {{
+  static constexpr std::array<std::array<size_t,3>,6> iFTtoSide {{
     std::array<size_t,3>{0,0,0},
     std::array<size_t,3>{0,0,1},
     std::array<size_t,3>{0,0,0},
@@ -264,6 +264,11 @@ struct Mesh {
   Eigen::Vector3d XT(size_t iT) const {
     assert(iT < nbC[3]);
     return XV(bVT(iT,0));
+  }
+  size_t findCell(const Eigen::Vector3d &x) const {
+    const int ix = x(0)*Nx, iy = x(1)*Nx, iz = x(2)*Nx;
+    assert(ix >= 0 && iy >= 0 && iz >= 0 && ix < static_cast<int>(Nx) && iy < static_cast<int>(Nx) && iz < static_cast<int>(Nx));
+    return ix + Nx*iy + Nx*Nx*iz;
   }
 };
 
