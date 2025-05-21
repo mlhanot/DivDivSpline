@@ -362,7 +362,6 @@ class TensorSpline {
       return rv;
     }
     /// Compute the L2 mass matrix
-    /*
     Eigen::SparseMatrix<double> L2() const {
       Eigen::SparseMatrix<double> rv(nbDofs,nbDofs);
       std::forward_list<Eigen::Triplet<double>> triplets;
@@ -377,11 +376,13 @@ class TensorSpline {
                 const size_t iF2 = _mesh.bN(3,FDim2,iT,iFT2);
                 const size_t offset2 = gOffset(FDim2,iF2);
                 const size_t lDim2 = localDim(FDim2,iF2);
-                for (size_t ind1 = 0; ind1 < localDim(FDim1,iF1); ++ind1) {
+                for (size_t ind1 = 0; ind1 < lDim1; ++ind1) {
                   const std::array<int,3> sBasis1 = splitBasis(FDim1,iFT1,ind1);
-                  for (size_t ind2 = (FDim2==FDim1&&iFT2==iFT1)?ind1:0; ind2 < localDim(FDim2,iF2); ++ind2) {
+                  for (size_t ind2 = (FDim2==FDim1&&iFT2==iFT1)?ind1:0; ind2 < lDim2; ++ind2) {
                     const std::array<int,3> sBasis2 = splitBasis(FDim2,iFT2,ind2);
-                    const double val = // TODO How to mix basis? 
+                    const double val = _S1.mass()(sBasis1[0],sBasis2[0])*
+                                       _S2.mass()(sBasis1[1],sBasis2[1])*
+                                       _S3.mass()(sBasis1[2],sBasis2[2]);
                     triplets.emplace_front(offset1+ind1,offset2+ind2,val);
                     if (offset2+ind2 != offset1+ind1) {
                       triplets.emplace_front(offset2+ind2,offset1+ind1,val);
@@ -393,8 +394,9 @@ class TensorSpline {
           }
         }
       }
+      rv.setFromTriplets(triplets.begin(),triplets.end());
+      return rv;
     }
-    */
 };
 
 #endif
