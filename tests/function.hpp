@@ -2,8 +2,26 @@
 #define FUNCTION_HPP
 
 #include <Eigen/Dense>
+#include "autodiff/forward/real.hpp"
 #include "autodiff/forward/dual.hpp"
 
+/// Wrapper for first order derivative
+template<typename F>
+double autodiff1st(F ADf, const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+  assert(dx + dy + dz < 2 && "only first order derivative implemented");
+  autodiff::real x = X(0), y = X(1), z = X(2);
+  if (dx > 0) {
+    return autodiff::derivative(ADf,autodiff::wrt(x), autodiff::at(x,y,z));
+  } else if (dy > 0) {
+    return autodiff::derivative(ADf,autodiff::wrt(y), autodiff::at(x,y,z));
+  } else if (dz > 0) {
+    return autodiff::derivative(ADf,autodiff::wrt(z), autodiff::at(x,y,z));
+  } else {
+    return ADf(x,y,z).val();
+  }
+};
+
+/// Wrapper for thrid order derivative
 template<typename F>
 double autodiff3rd(F ADf, const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
   assert(dx < 2 && dy < 2 && dz < 2 && "only first order derivative implemented");

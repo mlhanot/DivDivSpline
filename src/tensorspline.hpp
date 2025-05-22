@@ -344,7 +344,7 @@ class TensorSpline {
       }
     }
     /// Evaluate the discrete function uh at x
-    double evaluate(const Eigen::Vector3d &x, const Eigen::VectorXd &uh) const {
+    double evaluate(const Eigen::Vector3d &x, const Eigen::Ref<const Eigen::VectorXd> &uh) const {
       const size_t iT = _mesh.findCell(x); 
       const Eigen::Vector3d xloc = x - _mesh.XT(iT);
       double rv = 0.;

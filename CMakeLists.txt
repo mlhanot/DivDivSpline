@@ -40,6 +40,8 @@ INCLUDE_DIRECTORIES(${EXTERNAL_INCLUDES})
 #------------------------------------------------------------------------------#
 
 ADD_LIBRARY(quadrature src/legendregauss.cpp)
+ADD_LIBRARY(divdiv src/divdiv.cpp)
+TARGET_LINK_LIBRARIES(divdiv quadrature)
 
 #------------------------------------------------------------------------------#
 #                             Tests
