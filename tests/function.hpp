@@ -313,5 +313,241 @@ struct P3form {
 ;
   }
 };
+struct P0formAlt {
+  static double f(unsigned i, const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+    if (i == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x + 1)*(y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    };
+  }
+  static double df(unsigned i, unsigned j, const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+    if (i == 0 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return -1.0/3.0*(x + 1)*(y - 1) - 2.0/3.0*(3*x + 1)*(z + 1) + (2.0/3.0)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return 3*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return -1.0/3.0*(x + 1)*(y - 1) + (4.0/3.0)*(3*x + 1)*(z + 1) - 1.0/3.0*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1);
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x + 1)*(z + 3);
+        },X,dx,dy,dz);
+    } else {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (2.0/3.0)*x*y - 2*x*z - 8.0/3.0*x - 1.0/3.0*y*z + 2*y + (1.0/3.0)*z - 16.0/3.0;
+        },X,dx,dy,dz);
+    };
+  }
+};
+struct P1formAlt {
+  static double f(unsigned i, unsigned j, const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+    if (i == 0 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x + 1)*(y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x + 1)*(y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x + 1)*(y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return -(x - 2)*(y - 3)*(z - 4) - (x + 1)*(y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    };
+  }
+  static double df(unsigned i, unsigned j, const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+    if (i == 0 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(-y + z - 1);
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (1.0/2.0)*x*z + (1.0/2.0)*x - 1.0/2.0*y*z + (1.0/2.0)*y + 2*z - 1;
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return -3*x*y - 3.0/2.0*x*z + 4*x + (1.0/2.0)*y*z - 3*y - 3;
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (1.0/2.0)*x*z + (1.0/2.0)*x - 1.0/2.0*y*z + (1.0/2.0)*y + 2*z - 1;
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1) - (y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (1.0/2.0)*x*y - 3*x*z - 7.0/2.0*x + (3.0/2.0)*y*z + (3.0/2.0)*y - 7.0/2.0*z + 3.0/2.0;
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return -3*x*y - 3.0/2.0*x*z + 4*x + (1.0/2.0)*y*z - 3*y - 3;
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (1.0/2.0)*x*y - 3*x*z - 7.0/2.0*x + (3.0/2.0)*y*z + (3.0/2.0)*y - 7.0/2.0*z + 3.0/2.0;
+        },X,dx,dy,dz);
+    } else {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return -(x + 1)*(z + 3) + 3*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    };
+  }
+};
+struct P2formAlt {
+  static double f(unsigned i, unsigned j, const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+    if (i == 0 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else if (i == 0 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x + 1)*(y - 1)*(z + 3);
+        },X,dx,dy,dz);
+    } else if (i == 1 && j == 2) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 0) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x - 2)*(y - 3)*(z - 4);
+        },X,dx,dy,dz);
+    } else if (i == 2 && j == 1) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (3*x + 1)*(2*y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    } else {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return (x + 4)*(y - 1)*(z + 1);
+        },X,dx,dy,dz);
+    };
+  }
+  static double df(const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return 12*x + 2*y + 12*z + 10;
+        },X,dx,dy,dz);
+;
+  }
+};
+struct P3formAlt {
+  static double f(const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+      return autodiff1st(
+        [](autodiff::real x, autodiff::real y, autodiff::real z)->autodiff::real {
+          return 5*x*y*z + 146*x*y + 3*x*z + 6*x + 7*y*z + 2*y - 3*z - 1;
+        },X,dx,dy,dz);
+;
+  }
+  static double df(const Eigen::Vector3d &X, unsigned dx, unsigned dy, unsigned dz) {
+      return 0.;
+;
+  }
+};
 
 #endif
