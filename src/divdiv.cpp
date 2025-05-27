@@ -2,19 +2,21 @@
 
 #include "vectorspace.hpp"
 
+#include <functional>
+
 constexpr std::array<int,6> expandReg(int r1, int r2, int r3) {
   return {r1+2,r1,r2+2,r2,r3+2,r3};
 }
-constexpr std::array<size_t,5> VDims{3,8,6,1,0};
+constexpr std::array<size_t,6> VDims{3,8,6,3,1,0};
 
 template<size_t D> struct impl_DivDivSpaceBase {};
 
 template<> struct impl_DivDivSpaceBase<0> : public VectorSpace<3,
   expandReg(1,0,0),expandReg(0,1,0),expandReg(0,0,1)> {
-    impl_DivDivSpaceBase(size_t n) : VectorSpace(n) {;}
     static constexpr size_t degree = 0;
-    using MDiff = Eigen::Matrix<double,VDims[degree+1],Dim>;
+    impl_DivDivSpaceBase(size_t n) : VectorSpace(n) {;}
     using VType = std::tuple_element<degree,ValueTypes>::type;
+    using MDiff = Eigen::Matrix<double,VDims[degree+1],Dim>;
     const std::array<VType,Dim> VSpaces{{
       VType{1,0,0},
       VType{0,1,0},
@@ -62,6 +64,148 @@ template<> struct impl_DivDivSpaceBase<0> : public VectorSpace<3,
       });
   };
 
+template<> struct impl_DivDivSpaceBase<1> : public VectorSpace<8,
+  expandReg(1,-1,0),expandReg(1,0,-1),expandReg(-1,1,0),expandReg(0,1,-1),
+  expandReg(-1,0,1),expandReg(0,-1,1),expandReg(0,0,0),expandReg(0,0,0)> {
+    static constexpr size_t degree = 1;
+    impl_DivDivSpaceBase(size_t n) : VectorSpace(n) {;}
+    using VType = std::tuple_element<degree,ValueTypes>::type;
+    using MDiff = Eigen::Matrix<double,VDims[degree+1],Dim>;
+    const std::array<VType,Dim> VSpaces{{
+      VType{{{0,1,0},{0,0,0},{0,0,0}}},
+      VType{{{0,0,1},{0,0,0},{0,0,0}}},
+      VType{{{0,0,0},{1,0,0},{0,0,0}}},
+      VType{{{0,0,0},{0,0,1},{0,0,0}}},
+      VType{{{0,0,0},{0,0,0},{1,0,0}}},
+      VType{{{0,0,0},{0,0,0},{0,1,0}}},
+      VType{{{1,0,0},{0,-1,0},{0,0,0}}},
+      VType{{{0,0,0},{0,1,0},{0,0,-1}}}
+    }};
+    const Eigen::Matrix<double,Dim,Dim> mass{{{1,0,0,0,0,0,0,0},{0,1,0,0,0,0,0,0},{0,0,1,0,0,0,0,0},{0,0,0,1,0,0,0,0},{0,0,0,0,1,0,0,0},{0,0,0,0,0,1,0,0},{0,0,0,0,0,0,2,-1},{0,0,0,0,0,0,-1,2}}};
+    const std::array<MDiff,3> diff{{
+      MDiff{{{0,0,0,0,0,0,0,0},{0,0,0,-1,0,0,0,0},{0,0,0,0,0,1,0,0},{0,-1.0/2.0,0,0,0,0,0,0},{1.0/2.0,0,0,0,0,0,0,0},{0,0,0,0,0,0,-1.0/2.0,1}}},
+      MDiff{{{0,1,0,0,0,0,0,0},{0,0,0,0,0,0,0,0},{0,0,0,0,-1,0,0,0},{0,0,0,1.0/2.0,0,0,0,0},{0,0,0,0,0,0,-1.0/2.0,-1.0/2.0},{0,0,-1.0/2.0,0,0,0,0,0}}},
+      MDiff{{{-1,0,0,0,0,0,0,0},{0,0,1,0,0,0,0,0},{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,1,-1.0/2.0},{0,0,0,0,0,-1.0/2.0,0,0},{0,0,0,0,1.0/2.0,0,0,0}}}
+    }};
+    constexpr static auto interpolateWrapper = std::make_tuple(
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(0,1,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(0,2,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(1,0,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(1,2,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(2,0,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(2,1,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(0,0,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return -f(2,2,x,dx,dy,dz);
+      }
+      );
+  };
+
+template<> struct impl_DivDivSpaceBase<2> : public VectorSpace<6,
+  expandReg(1,-1,-1),expandReg(-1,1,-1),expandReg(-1,-1,1),
+  expandReg(0,0,-1),expandReg(0,-1,0),expandReg(-1,0,0)> {
+    static constexpr size_t degree = 2;
+    impl_DivDivSpaceBase(size_t n) : VectorSpace(n) {;}
+    using VType = std::tuple_element<degree,ValueTypes>::type;
+    using MDiff = Eigen::Matrix<double,VDims[degree+1],Dim>;
+    const std::array<VType,Dim> VSpaces{{
+      VType{{{1,0,0},{0,0,0},{0,0,0}}},
+      VType{{{0,0,0},{0,1,0},{0,0,0}}},
+      VType{{{0,0,0},{0,0,0},{0,0,1}}},
+      VType{{{0,1,0},{1,0,0},{0,0,0}}},
+      VType{{{0,0,1},{0,0,0},{1,0,0}}},
+      VType{{{0,0,0},{0,0,1},{0,1,0}}}
+    }};
+    const Eigen::Matrix<double,Dim,Dim> mass{{{1,0,0,0,0,0},{0,1,0,0,0,0},{0,0,1,0,0,0},{0,0,0,2,0,0},{0,0,0,0,2,0},{0,0,0,0,0,2}}};
+    const std::array<MDiff,3> diff{{
+      MDiff{{{1,0,0,0,0,0},{0,0,0,1,0,0},{0,0,0,0,1,0}}},
+      MDiff{{{0,0,0,1,0,0},{0,1,0,0,0,0},{0,0,0,0,0,1}}},
+      MDiff{{{0,0,0,0,1,0},{0,0,0,0,0,1},{0,0,1,0,0,0}}}
+    }};
+    constexpr static auto interpolateWrapper = std::make_tuple(
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(0,0,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(1,1,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(2,2,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(0,1,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(0,2,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(1,2,x,dx,dy,dz);
+      }
+      );
+  };
+
+template<> struct impl_DivDivSpaceBase<3> : public VectorSpace<3,
+  expandReg(0,-1,-1),expandReg(-1,0,-1),expandReg(-1,-1,0)> {
+    static constexpr size_t degree = 3;
+    impl_DivDivSpaceBase(size_t n) : VectorSpace(n) {;}
+    using VType = std::tuple_element<degree,ValueTypes>::type;
+    using MDiff = Eigen::Matrix<double,VDims[degree+1],Dim>;
+    const std::array<VType,Dim> VSpaces{{
+      VType{1,0,0},
+      VType{0,1,0},
+      VType{0,0,1}
+    }};
+    const Eigen::Matrix<double,Dim,Dim> mass{{{1,0,0},{0,1,0},{0,0,1}}};
+    const std::array<MDiff,3> diff{{
+      MDiff{1,0,0},
+      MDiff{0,1,0},
+      MDiff{0,0,1}
+    }};
+    constexpr static auto interpolateWrapper = std::make_tuple(
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(0,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(1,x,dx,dy,dz);
+      },
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(2,x,dx,dy,dz);
+      }
+      );
+  };
+
+template<> struct impl_DivDivSpaceBase<4> : public VectorSpace<1,
+  expandReg(-1,-1,-1)> {
+    static constexpr size_t degree = 4;
+    impl_DivDivSpaceBase(size_t n) : VectorSpace(n) {;}
+    using VType = std::tuple_element<degree,ValueTypes>::type;
+    using MDiff = Eigen::Matrix<double,VDims[degree+1],Dim>;
+    const std::array<VType,Dim> VSpaces {{
+      VType{1}
+    }};
+    const Eigen::Matrix<double,Dim,Dim> mass{{{1}}};
+    const std::array<MDiff,3> diff;
+    constexpr static auto interpolateWrapper = std::make_tuple(
+      [](auto f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz)->double{
+        return f(x,dx,dy,dz);
+      }
+      );
+  };
+
 // ----------------------------------------------------------------------------------------------------------
 
 template<size_t D>
@@ -84,10 +228,9 @@ Eigen::SparseMatrix<double> DivDivSpace<D>::d() const {
 template<size_t D>
 Eigen::VectorXd DivDivSpace<D>::interpolate(std::tuple_element<D,FunctionTypes>::type f, int r) const {
   Eigen::VectorXd rv(nbDofs);
-  using namespace std::placeholders;
   constexpr size_t Dim = decltype(_vspace)::element_type::Dim;
   const auto fTuple = [this,f]<size_t...I>(std::index_sequence<I...>) {
-    return std::make_tuple(std::bind(std::get<I>(_vspace->interpolateWrapper),f,_1,_2,_3,_4)...);
+    return std::make_tuple(std::bind_front(std::get<I>(_vspace->interpolateWrapper),f)...);
   }(std::make_index_sequence<Dim>());
   [this,&r,&rv,&fTuple]<size_t...I>(std::index_sequence<I...>) {
     (_vspace->template interpolate<I,decltype(std::get<I>(fTuple))>(rv,std::get<I>(fTuple),r),...);
@@ -106,3 +249,4 @@ template class DivDivSpace<0>;
 template class DivDivSpace<1>;
 template class DivDivSpace<2>;
 template class DivDivSpace<3>;
+template class DivDivSpace<4>;

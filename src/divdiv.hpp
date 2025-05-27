@@ -7,23 +7,50 @@
 #include <Eigen/Sparse>
 #include <memory>
 
-template<size_t D> struct impl_DivDivSpaceBase;
-
 using FunctionTypes = std::tuple<
   std::function<double(unsigned,const Eigen::Vector3d &,unsigned,unsigned,unsigned)>, // H1 (R^3)
   std::function<double(unsigned,unsigned,const Eigen::Vector3d &,unsigned,unsigned,unsigned)>, // H(symcurl) (R^{3x3})
   std::function<double(unsigned,unsigned,const Eigen::Vector3d &,unsigned,unsigned,unsigned)>, // H(divdiv) (R^{3x3})
-  std::function<double(const Eigen::Vector3d &,unsigned,unsigned,unsigned)>>; // L2 (R)
+  std::function<double(unsigned,const Eigen::Vector3d &,unsigned,unsigned,unsigned)>, // H(div) (R^3)
+  std::function<double(const Eigen::Vector3d &,unsigned,unsigned,unsigned)> // L2 (R)
+  >; 
 using ValueTypes = std::tuple<
   Eigen::Vector3d,
   Eigen::Matrix3d,
   Eigen::Matrix3d,
-  double>;
+  Eigen::Vector3d,
+  double
+  >;
 
-template<size_t D> requires(D < 4)
+/// Merge the components into a vector/matrix
+template<size_t degree,typename F> requires(degree < 5 && std::convertible_to<F,typename std::tuple_element<degree,FunctionTypes>::type>)
+std::tuple_element<degree,ValueTypes>::type mergeComp(F f, const Eigen::Vector3d &x, unsigned dx, unsigned dy, unsigned dz) {
+  typename std::tuple_element<degree,ValueTypes>::type rv;
+  if constexpr (degree == 0) {
+    for (size_t i = 0; i < 3; ++i) {
+      rv(i) = f(i,x,dx,dy,dz);
+    }
+  } else if constexpr (degree < 3) {
+    for (size_t i = 0; i < 3; ++i) {
+      for (size_t j = 0; j < 3; ++j) {
+        rv(i,j) = f(i,j,x,dx,dy,dz);
+      }
+    }
+  } else {
+    rv = f(x,dx,dy,dz);
+  }
+  return rv;
+};
+
+template<size_t> struct impl_DivDivSpaceBase;
+/// Spaces for the divdiv complex
+/**
+  \warning The differential operator is always first order. The divdiv operator is obtained composing the 2nd and 3rd diff
+  */
+template<size_t D> requires(D < 5)
 class DivDivSpace {
   private:
-    std::unique_ptr<impl_DivDivSpaceBase<D>> _vspace;
+    const std::unique_ptr<impl_DivDivSpaceBase<D>> _vspace;
   public:
     DivDivSpace(size_t n);
     ~DivDivSpace();
@@ -39,5 +66,6 @@ extern template class DivDivSpace<0>;
 extern template class DivDivSpace<1>;
 extern template class DivDivSpace<2>;
 extern template class DivDivSpace<3>;
+extern template class DivDivSpace<4>;
 
 #endif

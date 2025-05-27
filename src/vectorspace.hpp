@@ -60,10 +60,15 @@ class VectorSpace {
       std::array<size_t,RDim+1> RsOffset;
       RsOffset.fill(0);
       auto fillIfNz = [this,&RsOffset,&D]<size_t c, size_t dir>(size_t r) {
-        if (RsOffset[r+1] > 0) return;
-        if (std::abs(D[dir](r,c)) < 1e-14) return;
-        TensorSpline<std::tuple_element<c,decltype(_Splines)>::type::template derivativeSpace<dir>()> Sp(mesh().Nx);
-        RsOffset[r+1] = Sp.nbDofs;
+        if constexpr (!std::tuple_element<c,decltype(_Splines)>::type::template isValidDerivative<dir>()) {
+          assert(std::abs(D[dir](r,c))< 1e-14 && "Non zero component along wrong direction");
+          return;
+        } else {
+          if (RsOffset[r+1] > 0) return;
+          if (std::abs(D[dir](r,c)) < 1e-14) return;
+          TensorSpline<std::tuple_element<c,decltype(_Splines)>::type::template derivativeSpace<dir>()> Sp(mesh().Nx);
+          RsOffset[r+1] = Sp.nbDofs;
+        }
       };
       auto dirIterate = [&fillIfNz]<size_t c, size_t... I2>(size_t r, std::integral_constant<size_t,c>, std::index_sequence<I2...>) {
         (fillIfNz.template operator()<c,I2>(r),...);

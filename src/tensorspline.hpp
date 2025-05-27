@@ -157,86 +157,98 @@ class TensorSpline {
       }
     }
     template<unsigned direction>
+    static constexpr bool isValidDerivative() {
+      if constexpr (direction < 3) {
+        return (_dr[2*direction+1] >= 0);
+      } else {
+        return false;
+      }
+    }
+    template<unsigned direction>
     Eigen::SparseMatrix<double> derivative() const {
       static_assert(direction < 3 && "Use direction = 0 for x, 1 for y, and 2 for z");
-      TensorSpline<derivativeSpace<direction>()> Sp1(_mesh.Nx);
-      Eigen::SparseMatrix<double> rv(Sp1.nbDofs,nbDofs);
-      std::forward_list<Eigen::Triplet<double>> triplets;
-      auto tensorID = [&triplets]<std::array<unsigned,3> dLoc,int dofR, int dofC>(
-          const Eigen::Matrix<double,dofR,dofC>& diff, 
-          int offsetR, int offsetC){
-        constexpr int rep = tensorDof(dLoc,0,direction);
-        constexpr int length = tensorDof(dLoc,direction+1,3);
-        constexpr int strideR = length*dofR, strideC = length*dofC;
-        for (int iInner = 0; iInner < rep; ++iInner) { // Iterate tensor dimensions on the left
-          const int baseR = offsetR+iInner*strideR, baseC = offsetC+iInner*strideC;
-          for (int iDest = 0; iDest < dofR; ++iDest) { // Iterate tensor dimension corresponding to direction
-            for (int iSource = 0; iSource < dofC; ++iSource) { // Iterate tensor dimension corresponding to direction
-              const double val = diff(iDest,iSource);
-              for (int iOuter = 0; iOuter < length; ++iOuter) { // Iterate tensor dimensions on the right
-                triplets.emplace_front(baseR+iDest*length+iOuter,baseC+iSource*length+iOuter,val);
+      if constexpr (!isValidDerivative<direction>()) { // Not enough regularity in this direction
+        return Eigen::SparseMatrix<double>(0,nbDofs);
+      } else {
+        TensorSpline<derivativeSpace<direction>()> Sp1(_mesh.Nx);
+        Eigen::SparseMatrix<double> rv(Sp1.nbDofs,nbDofs);
+        std::forward_list<Eigen::Triplet<double>> triplets;
+        auto tensorID = [&triplets]<std::array<unsigned,3> dLoc,int dofR, int dofC>(
+            const Eigen::Matrix<double,dofR,dofC>& diff, 
+            int offsetR, int offsetC){
+          constexpr int rep = tensorDof(dLoc,0,direction);
+          constexpr int length = tensorDof(dLoc,direction+1,3);
+          constexpr int strideR = length*dofR, strideC = length*dofC;
+          for (int iInner = 0; iInner < rep; ++iInner) { // Iterate tensor dimensions on the left
+            const int baseR = offsetR+iInner*strideR, baseC = offsetC+iInner*strideC;
+            for (int iDest = 0; iDest < dofR; ++iDest) { // Iterate tensor dimension corresponding to direction
+              for (int iSource = 0; iSource < dofC; ++iSource) { // Iterate tensor dimension corresponding to direction
+                const double val = diff(iDest,iSource);
+                for (int iOuter = 0; iOuter < length; ++iOuter) { // Iterate tensor dimensions on the right
+                  triplets.emplace_front(baseR+iDest*length+iOuter,baseC+iSource*length+iOuter,val);
+                }
               }
             }
           }
-        }
-      };
-      auto iterateObjects = [this,&Sp1,tensorID]<size_t iDim,unsigned axis>() {
-        constexpr std::array<unsigned,3> dLoc = (iDim == 0)? dofVr : (
-                                                (iDim == 1)? dofEr[axis] : (
-                                                (iDim == 2)? dofFr[axis] : dofTr));
-        constexpr std::array<int,2> dofip1 = Sp1.template Si<direction>().dof;
-        // Cannot use this in constexpr, but decltype does not evaluate the function
-        constexpr std::array<int,2> dofi = std::remove_cvref_t<decltype(Si<direction>())>::dof; 
-        if (Sp1.tensorDof(dLoc) == 0) return;
-        const size_t maxIT = (iDim == 1)? _mesh.IEX : ((iDim == 2)? _mesh.IFX : _mesh.nbC[iDim]);
-        const size_t offsetIT = (iDim == 1)? axis*_mesh.IEX : ((iDim == 2)? axis*_mesh.IFX : 0);
-        for (size_t iT0 = 0; iT0 < maxIT; ++iT0) {
-          const size_t iT = iT0 + offsetIT;
-          const size_t offsetR = Sp1.gOffset(iDim,iT), offsetC = gOffset(iDim,iT);
-          if (dLoc[direction] == 0) { // Vertex dof in the derivative direction
-            constexpr int dofR = dofip1[0], dofC = dofi[0];
-            tensorID.template operator()<dLoc,dofR,dofC>(Si<direction>().dx.template topLeftCorner<dofR,dofC>(),offsetR,offsetC); // V->V component
-          } else { // Edge dof in the derivative direction
-            constexpr int dofR = dofip1[1], dofCV = dofi[0], dofCE = dofi[1];
-            tensorID.template operator()<dLoc,dofR,dofCE>(Si<direction>().dx.template bottomRightCorner<dofR,dofCE>(),offsetR,offsetC); // E->E component
-            constexpr size_t VDim = iDim - 1; // Dimension of the "vertices" of E
-            static_assert(dLoc[direction] == 0 || VDim == dLoc[(direction+1)%3]+dLoc[(direction+2)%3]); 
-            auto getLRFace = [this](size_t iT) { // If VDim = 2, the element must be a cell
-              constexpr size_t iFT = []<typename M>(){
-                for (size_t i = 0; i < 6; ++i) {
-                  if (M::iFTtoAxis[i] == ((direction+1)%3)) return i;
-                } // iFT is the first face normal to direction
-              }.template operator()<decltype(_mesh)>();
-              static_assert(iFT < 5);
-              return std::array<size_t,2>{_mesh.bT(iT,iFT),_mesh.bT(iT,iFT+1)}; // Faces are ordered with increasing global index
-            };
-            auto getLREdge = [this](size_t iF) { // If VDim = 1, the element must be a face spawned by direction and any of the edges of interest
-              constexpr size_t iEF = []<typename M>(){
-                for (size_t i = 0; i < 4; ++i) {
-                  if (M::iEFtoAxis[axis][i] != direction) return i;
-                } // iEF is the first edge orthogonal to direction
-              }.template operator()<decltype(_mesh)>();
-              static_assert(iEF < 3);
-              return std::array<size_t,2>{_mesh.bF(iF,iEF),_mesh.bF(iF,iEF+1)}; // Edges are ordered with increasing global index
-            };
-            const auto [iV0, iV1] = (VDim == 2)? getLRFace(iT) : (
-                                    (VDim == 1)? getLREdge(iT) : 
-                                    std::array<size_t,2>{_mesh.bE(iT,0),_mesh.bE(iT,1)});
-            tensorID.template operator()<dLoc,dofR,dofCV>(Si<direction>().dx.template bottomLeftCorner<dofR,dofCV>(),offsetR,gOffset(VDim,iV0));
-            tensorID.template operator()<dLoc,dofR,dofCV>(Si<direction>().dx.template block<dofR,dofCV>(2*dofip1[0],dofCV),offsetR,gOffset(VDim,iV1));
+        };
+        auto iterateObjects = [this,&Sp1,tensorID]<size_t iDim,unsigned axis>() {
+          constexpr std::array<unsigned,3> dLoc = (iDim == 0)? dofVr : (
+                                                  (iDim == 1)? dofEr[axis] : (
+                                                  (iDim == 2)? dofFr[axis] : dofTr));
+          constexpr std::array<int,2> dofip1 = Sp1.template Si<direction>().dof;
+          // Cannot use this in constexpr, but decltype does not evaluate the function
+          constexpr std::array<int,2> dofi = std::remove_cvref_t<decltype(Si<direction>())>::dof; 
+          if (Sp1.tensorDof(dLoc) == 0) return;
+          const size_t maxIT = (iDim == 1)? _mesh.IEX : ((iDim == 2)? _mesh.IFX : _mesh.nbC[iDim]);
+          const size_t offsetIT = (iDim == 1)? axis*_mesh.IEX : ((iDim == 2)? axis*_mesh.IFX : 0);
+          for (size_t iT0 = 0; iT0 < maxIT; ++iT0) {
+            const size_t iT = iT0 + offsetIT;
+            const size_t offsetR = Sp1.gOffset(iDim,iT), offsetC = gOffset(iDim,iT);
+            if (dLoc[direction] == 0) { // Vertex dof in the derivative direction
+              constexpr int dofR = dofip1[0], dofC = dofi[0];
+              tensorID.template operator()<dLoc,dofR,dofC>(Si<direction>().dx.template topLeftCorner<dofR,dofC>(),offsetR,offsetC); // V->V component
+            } else { // Edge dof in the derivative direction
+              constexpr int dofR = dofip1[1], dofCV = dofi[0], dofCE = dofi[1];
+              tensorID.template operator()<dLoc,dofR,dofCE>(Si<direction>().dx.template bottomRightCorner<dofR,dofCE>(),offsetR,offsetC); // E->E component
+              constexpr size_t VDim = iDim - 1; // Dimension of the "vertices" of E
+              static_assert(dLoc[direction] == 0 || VDim == dLoc[(direction+1)%3]+dLoc[(direction+2)%3]); 
+              auto getLRFace = [this](size_t iT) { // If VDim = 2, the element must be a cell
+                constexpr size_t iFT = []<typename M>(){
+                  for (size_t i = 0; i < 6; ++i) {
+                    if (M::iFTtoAxis[i] == ((direction+1)%3)) return i;
+                  } // iFT is the first face normal to direction
+                }.template operator()<decltype(_mesh)>();
+                static_assert(iFT < 5);
+                return std::array<size_t,2>{_mesh.bT(iT,iFT),_mesh.bT(iT,iFT+1)}; // Faces are ordered with increasing global index
+              };
+              auto getLREdge = [this](size_t iF) { // If VDim = 1, the element must be a face spawned by direction and any of the edges of interest
+                constexpr size_t iEF = []<typename M>(){
+                  for (size_t i = 0; i < 4; ++i) {
+                    if (M::iEFtoAxis[axis][i] != direction) return i;
+                  } // iEF is the first edge orthogonal to direction
+                }.template operator()<decltype(_mesh)>();
+                static_assert(iEF < 3);
+                return std::array<size_t,2>{_mesh.bF(iF,iEF),_mesh.bF(iF,iEF+1)}; // Edges are ordered with increasing global index
+              };
+              const auto [iV0, iV1] = (VDim == 2)? getLRFace(iT) : (
+                                      (VDim == 1)? getLREdge(iT) : 
+                                      std::array<size_t,2>{_mesh.bE(iT,0),_mesh.bE(iT,1)});
+              tensorID.template operator()<dLoc,dofR,dofCV>(Si<direction>().dx.template bottomLeftCorner<dofR,dofCV>(),offsetR,gOffset(VDim,iV0));
+              tensorID.template operator()<dLoc,dofR,dofCV>(Si<direction>().dx.template block<dofR,dofCV>(2*dofip1[0],dofCV),offsetR,gOffset(VDim,iV1));
+            }
           }
-        }
-      };
-      iterateObjects.template operator()<0,0>(); // Vertices
-      iterateObjects.template operator()<1,0>(); // Edges
-      iterateObjects.template operator()<1,1>();
-      iterateObjects.template operator()<1,2>();
-      iterateObjects.template operator()<2,0>(); // Faces
-      iterateObjects.template operator()<2,1>();
-      iterateObjects.template operator()<2,2>();
-      iterateObjects.template operator()<3,0>(); // Cells
-      rv.setFromTriplets(triplets.begin(),triplets.end());
-      return rv;
+        };
+        iterateObjects.template operator()<0,0>(); // Vertices
+        iterateObjects.template operator()<1,0>(); // Edges
+        iterateObjects.template operator()<1,1>();
+        iterateObjects.template operator()<1,2>();
+        iterateObjects.template operator()<2,0>(); // Faces
+        iterateObjects.template operator()<2,1>();
+        iterateObjects.template operator()<2,2>();
+        iterateObjects.template operator()<3,0>(); // Cells
+        rv.setFromTriplets(triplets.begin(),triplets.end());
+        return rv;
+      }
     }
     /// Convert the local index of the tensor product to the locals indices of each components
     static constexpr std::array<int,3> splitIndex(int i,const std::array<unsigned,3> &dLoc) {
