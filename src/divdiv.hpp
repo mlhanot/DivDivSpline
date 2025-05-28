@@ -60,6 +60,20 @@ class DivDivSpace {
     Eigen::SparseMatrix<double> d() const;
     Eigen::VectorXd interpolate(std::tuple_element<D,FunctionTypes>::type f, int r = -1) const;
     std::tuple_element<D,ValueTypes>::type evaluate(const Eigen::Vector3d &x, const Eigen::Ref<const Eigen::VectorXd> &uh) const;
+    /// Marks boundary elements
+    template<typename F> void markBoundary(F f) {
+      markBoundaryDofs(mesh.markBoundary(f));
+    }
+    /// Helper to mark all the boundary 
+    static bool allBoundary(const Eigen::Vector3d &x) {
+      constexpr double esp = 1e-10;
+      return (x[0] < esp) || (x[1] < esp) || (x[2] < esp) || (x[0]-1. < esp) || (x[1]-1. < esp) || (x[2]-1. < esp);
+    };
+    /// Returns the extension operator K(nbDofs,nbDofs-boundaryDim)
+    Eigen::SparseMatrix<double> interiorExtension() const;
+  private:
+    Eigen::VectorXi _boundaryDofs;
+    void markBoundaryDofs(const Eigen::VectorXi &);
 };
 
 extern template class DivDivSpace<0>;

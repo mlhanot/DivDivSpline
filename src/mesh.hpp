@@ -6,6 +6,7 @@
 #include <cassert>
 #include <Eigen/Dense>
 
+template<typename F> concept meshMarker = requires (F f, Eigen::Vector3d x) { {f(x)}->std::same_as<bool>;};
 /// Compute basic geometrical relation in a cartesian mesh
 /**
   The mesh is the cube [0,1]^3
@@ -269,6 +270,34 @@ struct Mesh {
     const int ix = x(0)*Nx, iy = x(1)*Nx, iz = x(2)*Nx;
     assert(ix >= 0 && iy >= 0 && iz >= 0 && ix < static_cast<int>(Nx) && iy < static_cast<int>(Nx) && iz < static_cast<int>(Nx));
     return ix + Nx*iy + Nx*Nx*iz;
+  }
+  /// Mark elements based on a function F
+  /** The vertices are selected geometrically, 
+    the other elements are then marked iff all their vertices are.
+    */
+  template<meshMarker F>
+  Eigen::VectorXi markBoundary(F f) const {
+    Eigen::VectorXi rv = Eigen::VectorXi::Zero(nbC[0]+nbC[1]+nbC[2]+nbC[3]);
+    for (size_t iV = 0; iV < nbC[0]; ++iV) {
+      if (f(XV(iV))) {
+        rv[iV] = 1;
+      }
+    }
+    for (size_t iDim = 1; iDim < 4; ++iDim) {
+      const size_t offset = nbC[iDim-1];
+      for (size_t iE = 0; iE < nbC[iDim]; ++iE) {
+        bool inBoundary = true;
+        for (size_t iVE = 0; iVE < bDim[iDim][0]; ++iVE) {
+          if (rv[bN(iDim,0,iE,iVE)] == 0) {
+            inBoundary = false;
+          }
+        }
+        if (inBoundary) {
+          rv[offset+iE] = 1;
+        }
+      }
+    }
+    return rv;
   }
 };
 

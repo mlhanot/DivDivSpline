@@ -119,6 +119,27 @@ class VectorSpace {
       assert(static_cast<size_t>(uh.size()) == _sOffset[Dim]);
       return std::get<i>(_Splines).evaluate(x,uh.segment(_sOffset[i],_sOffset[i+1]-_sOffset[i]));
     }
+    /// Mark the dofs corresponding to marked mesh elements
+    Eigen::VectorXi markDof(const Eigen::VectorXi &MX) const {
+      assert(static_cast<size_t>(MX.size()) == mesh().nbC[0] + mesh().nbC[1] + mesh().nbC[2] + mesh().nbC[3]);
+      Eigen::VectorXi rv(_sOffset[Dim]);
+      auto single = [this,&rv,&MX]<size_t Dim>() {
+        const size_t offset = _sOffset[Dim];
+        int acc = 0, moffset = 0;
+        for (size_t iD = 0; iD < 4; ++iD) {
+          for (size_t iT = 0; iT < mesh().nbC[iD]; ++iT) {
+            for (size_t ldim = 0; ldim < std::get<Dim>(_Splines).localDim(iD,iT); ++ldim) {
+              rv[offset + acc++] = MX[moffset+iT];
+            }
+          }
+          moffset += mesh().nbC[iD];
+        }
+      };
+      [&single]<size_t ...I>(std::index_sequence<I...>) {
+        (single.template operator()<I>(),...);
+      }(std::make_index_sequence<Dim>());
+      return rv;
+    }
   private:
     std::tuple<TensorSpline<TSpaces>...> _Splines;
     const std::array<size_t,Dim+1> _sOffset;
