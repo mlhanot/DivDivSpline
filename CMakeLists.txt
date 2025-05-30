@@ -42,6 +42,8 @@ INCLUDE_DIRECTORIES(${EXTERNAL_INCLUDES})
 ADD_LIBRARY(quadrature src/legendregauss.cpp)
 ADD_LIBRARY(divdiv src/divdiv.cpp)
 TARGET_LINK_LIBRARIES(divdiv quadrature)
+ADD_LIBRARY(deRham src/deRham.cpp)
+TARGET_LINK_LIBRARIES(deRham quadrature)
 
 #------------------------------------------------------------------------------#
 #                             Tests
@@ -51,3 +53,4 @@ IF(BUILD_TEST)
   ADD_SUBDIRECTORY(tests)
 ENDIF()
 
+ADD_SUBDIRECTORY(Schemes)

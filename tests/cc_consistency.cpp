@@ -95,6 +95,7 @@ int main(int argc,char **argv) {
   const int N = std::atoi(argv[2]);
   const int solverType = std::atoi(argv[3]);
   const int caseU = std::atoi(argv[4]);
+  const bool useH0 = (caseU < 3);
   if (formDegree < 0 || formDegree > 2) {
     std::cout<<"formDegree must be between 0 and 2, "<<formDegree<<" was given\n";
     return 1;
@@ -106,7 +107,7 @@ int main(int argc,char **argv) {
 
   Eigen::SparseMatrix<double> Omega;
   Eigen::VectorXd L;
-  auto setMat = [&Omega,&L,N]<size_t k,typename F>() {
+  auto setMat = [&Omega,&L,N,useH0]<size_t k,typename F>() {
     DivDivSpace<k> ops1(N);
     DivDivSpace<(k==2)?4:k+1> ops2(N);
     Eigen::SparseMatrix<double> M1, M2, dh, BC;
@@ -117,7 +118,9 @@ int main(int argc,char **argv) {
       DivDivSpace<3> opsi(N);
       dh = opsi.d()*dh;
     }
-    ops1.markBoundary(ops1.allBoundary);
+    if (useH0) {
+      ops1.markBoundary(ops1.allBoundary);
+    }
     BC = ops1.interiorExtension();
     Omega = BC.transpose()*(M1 + dh.transpose()*M2*dh)*BC;
     std::cout<<"Mass matrix assembled"<<std::endl;
@@ -133,24 +136,36 @@ int main(int argc,char **argv) {
       setMat.template operator()<0,P1C0>();
     } else if (caseU == 1) {
       setMat.template operator()<0,P1C1>();
-    } else {
+    } else if (caseU == 2) {
       setMat.template operator()<0,P1C2>();
+    } else if (caseU == 3) {
+      setMat.template operator()<0,P1A0>();
+    } else {
+      setMat.template operator()<0,P1A1>();
     }
   } else if (formDegree == 1) {
     if (caseU == 0) {
       setMat.template operator()<1,P2C0>();
     } else if (caseU == 1) {
       setMat.template operator()<1,P2C1>();
-    } else {
+    } else if (caseU == 2) {
       setMat.template operator()<1,P2C2>();
+    } else if (caseU == 3) {
+      setMat.template operator()<1,P2A0>();
+    } else {
+      setMat.template operator()<1,P2A1>();
     }
   } else {
     if (caseU == 0) {
       setMat.template operator()<2,P3C0>();
     } else if (caseU == 1) {
       setMat.template operator()<2,P3C1>();
-    } else {
+    } else if (caseU == 2) {
       setMat.template operator()<2,P3C2>();
+    } else if (caseU == 3) {
+      setMat.template operator()<2,P3A0>();
+    } else {
+      setMat.template operator()<2,P3A1>();
     }
   }
   std::cout<<"For d^"<<formDegree<<" with N = "<<N<<", testCase: "<<caseU<<std::endl;

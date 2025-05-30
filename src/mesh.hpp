@@ -266,6 +266,20 @@ struct Mesh {
     assert(iT < nbC[3]);
     return XV(bVT(iT,0));
   }
+  /// Return the reference location of a generic cell
+  Eigen::Vector3d XN(size_t dim, size_t iT) const {
+    assert(dim < 4);
+    switch(dim) {
+      case 0:
+        return XV(iT);
+      case 1:
+        return XE(iT);
+      case 2:
+        return XF(iT);
+      default:
+        return XT(iT);
+    }
+  }
   size_t findCell(const Eigen::Vector3d &x) const {
     const int ix = x(0)*Nx, iy = x(1)*Nx, iz = x(2)*Nx;
     assert(ix >= 0 && iy >= 0 && iz >= 0 && ix < static_cast<int>(Nx) && iy < static_cast<int>(Nx) && iz < static_cast<int>(Nx));
@@ -283,8 +297,9 @@ struct Mesh {
         rv[iV] = 1;
       }
     }
+    size_t offset = 0;
     for (size_t iDim = 1; iDim < 4; ++iDim) {
-      const size_t offset = nbC[iDim-1];
+      offset += nbC[iDim-1];
       for (size_t iE = 0; iE < nbC[iDim]; ++iE) {
         bool inBoundary = true;
         for (size_t iVE = 0; iVE < bDim[iDim][0]; ++iVE) {

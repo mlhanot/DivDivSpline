@@ -210,7 +210,7 @@ template<> struct impl_DivDivSpaceBase<4> : public VectorSpace<1,
 
 template<size_t D>
 DivDivSpace<D>::DivDivSpace(size_t n) : _vspace(std::make_unique<typename decltype(_vspace)::element_type>(n)), 
-  mesh(_vspace->mesh()), nbDofs(_vspace->sOffset().back()) {;}
+  mesh(_vspace->mesh()), nbDofs(_vspace->sOffset().back()), SDim(_vspace->Dim) {;}
 
 template<size_t D>
 DivDivSpace<D>::~DivDivSpace() = default;
@@ -269,8 +269,29 @@ Eigen::SparseMatrix<double> DivDivSpace<D>::interiorExtension() const {
 }
 
 template<size_t D>
+Eigen::SparseMatrix<double> DivDivSpace<D>::boundaryExtension() const {
+  if (static_cast<size_t>(_boundaryDofs.size()) != nbDofs) {
+    assert(_boundaryDofs.size() == 0); // No boundary was marked, returns zero
+    return Eigen::SparseMatrix<double>(nbDofs,0);
+  }
+  size_t accI = 0;
+  std::forward_list<Eigen::Triplet<double>> triplets;
+  for (size_t iDof = 0; iDof < nbDofs; ++iDof) {
+    if (_boundaryDofs[iDof] == 0) continue;
+    triplets.emplace_front(iDof,accI++,1.);
+  }
+  Eigen::SparseMatrix<double> rv(nbDofs,accI);
+  rv.setFromTriplets(triplets.begin(),triplets.end());
+  return rv;
+}
+
+template<size_t D>
 void DivDivSpace<D>::markBoundaryDofs(const Eigen::VectorXi &x) {
   _boundaryDofs = _vspace->markDof(x);
+}
+template<size_t D>
+size_t DivDivSpace<D>::sOffset(size_t i) const {
+  return _vspace->sOffset().at(i);
 }
 
 template class DivDivSpace<0>;
