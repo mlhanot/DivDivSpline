@@ -5,6 +5,7 @@
 
 #include <forward_list>
 
+template<bool useCN>
 class ADM {
   public:
     ADM(size_t n, double dt) : _dd0(n), _dd1(n), _dd2(n), _dd3(n), _dd4(n), _offsets([this](){
@@ -26,17 +27,27 @@ class ADM {
     /// Return the bilinear form associated with the system
     Eigen::SparseMatrix<double> system() const {
       if (_boundaryMarked) {
-        return _interiorExt.transpose()*_A*_interiorExt;
+	if constexpr(useCN) return _interiorExt.transpose()*(_M - _L)*_interiorExt;
+        else return _interiorExt.transpose()*_L*_interiorExt;
       } else {
-        return _A;
+	if constexpr(useCN) return _M-_L;
+        else return _L;
       }
     }
     /// Assemble the RHS
     Eigen::VectorXd RHS(const Eigen::VectorXd &uOld, const Eigen::VectorXd &ub, const Eigen::VectorXd &ubOld) const {
-      if (_boundaryMarked) {
-        return _interiorExt.transpose()*(-_A*_boundaryExt*ub + _M*(_interiorExt*uOld + _boundaryExt*ubOld));
+      if constexpr(useCN) {
+	if (_boundaryMarked) {
+          return _interiorExt.transpose()*(-(_M-_L)*_boundaryExt*ub + (_M+_L)*(_interiorExt*uOld + _boundaryExt*ubOld));
+        } else {
+          return _interiorExt.transpose()*(_M+_L)*_interiorExt*uOld;
+        }
       } else {
-        return _interiorExt.transpose()*_M*_interiorExt*uOld;
+        if (_boundaryMarked) {
+	  return _interiorExt.transpose()*(-_L*_boundaryExt*ub + _M*(_interiorExt*uOld + _boundaryExt*ubOld));
+        } else {
+          return _interiorExt.transpose()*_M*_interiorExt*uOld;
+        }
       }
     };
     /// Interpolate the interior degrees of freedom
@@ -127,7 +138,8 @@ class ADM {
       blockAssemble(triplets,_offsets[3],_offsets[2],-_dd3.d()*_dd2.d());
       Eigen::SparseMatrix<double> Jd(_offsets[4],_offsets[4]);
       Jd.setFromTriplets(triplets.begin(),triplets.end());
-      _A = _M - dt*_M*Jd + dt*Jd.transpose()*_M;
+      if constexpr(useCN) _L =  0.5*dt*(_M*Jd - Jd.transpose()*_M);
+      else  _L = _M - dt*_M*Jd + dt*Jd.transpose()*_M;
     }
   private:
     DivDivSpace<0> _dd0;
@@ -137,7 +149,7 @@ class ADM {
     DivDivSpace<4> _dd4;
     const std::array<size_t,5> _offsets;
     std::array<size_t,5> _offsetsInterior, _offsetsBoundary;
-    Eigen::SparseMatrix<double> _M, _A, _interiorExt, _boundaryExt;
+    Eigen::SparseMatrix<double> _M, _L, _interiorExt, _boundaryExt;
     bool _boundaryMarked;
 };
 

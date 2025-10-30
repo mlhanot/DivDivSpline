@@ -208,24 +208,24 @@ template<> struct impl_DivDivSpaceBase<4> : public VectorSpace<1,
 
 // ----------------------------------------------------------------------------------------------------------
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 DivDivSpace<D>::DivDivSpace(size_t n) : _vspace(std::make_unique<typename decltype(_vspace)::element_type>(n)), 
   mesh(_vspace->mesh()), nbDofs(_vspace->sOffset().back()), SDim(_vspace->Dim) {;}
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 DivDivSpace<D>::~DivDivSpace() = default;
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 Eigen::SparseMatrix<double> DivDivSpace<D>::L2() const {
   return _vspace->L2(_vspace->mass);
 }
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 Eigen::SparseMatrix<double> DivDivSpace<D>::d() const {
   return _vspace->derivative(_vspace->diff);
 }
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 Eigen::VectorXd DivDivSpace<D>::interpolate(std::tuple_element<D,FunctionTypes>::type f, int r) const {
   Eigen::VectorXd rv(nbDofs);
   constexpr size_t Dim = decltype(_vspace)::element_type::Dim;
@@ -238,14 +238,14 @@ Eigen::VectorXd DivDivSpace<D>::interpolate(std::tuple_element<D,FunctionTypes>:
   return rv;
 }
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 std::tuple_element<D,ValueTypes>::type DivDivSpace<D>::evaluate(const Eigen::Vector3d &x, const Eigen::Ref<const Eigen::VectorXd> &uh) const {
   return [this,x,uh]<size_t...I>(std::index_sequence<I...>)->decltype(_vspace)::element_type::VType {
     return ((_vspace->template evaluate<I>(x,uh)*_vspace->VSpaces[I])+...);
   }(std::make_index_sequence<decltype(_vspace)::element_type::Dim>());
 }
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 Eigen::SparseMatrix<double> DivDivSpace<D>::interiorExtension() const {
   if (static_cast<size_t>(_boundaryDofs.size()) != nbDofs) {
     assert(_boundaryDofs.size() == 0); // No boundary was marked, returns identity
@@ -268,7 +268,7 @@ Eigen::SparseMatrix<double> DivDivSpace<D>::interiorExtension() const {
   return rv;
 }
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 Eigen::SparseMatrix<double> DivDivSpace<D>::boundaryExtension() const {
   if (static_cast<size_t>(_boundaryDofs.size()) != nbDofs) {
     assert(_boundaryDofs.size() == 0); // No boundary was marked, returns zero
@@ -285,11 +285,11 @@ Eigen::SparseMatrix<double> DivDivSpace<D>::boundaryExtension() const {
   return rv;
 }
 
-template<size_t D>
+template<size_t D> requires(D < 5)
 void DivDivSpace<D>::markBoundaryDofs(const Eigen::VectorXi &x) {
   _boundaryDofs = _vspace->markDof(x);
 }
-template<size_t D>
+template<size_t D> requires(D < 5)
 size_t DivDivSpace<D>::sOffset(size_t i) const {
   return _vspace->sOffset().at(i);
 }

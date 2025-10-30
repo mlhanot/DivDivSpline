@@ -29,14 +29,14 @@ int main(int argc,char **argv) {
     std::cerr<<"Time step too small: "<<dt<<std::endl;
     return 1;
   }
+
   std::ofstream fh;
   if (filename) {
     fh.open(filename);
   }
-
   std::cout<<"ADM solver: testCase: "<<Case<<", parameters: Subdivision: "<<N<<", Timestep: "<<dt<<std::endl;
   Timer startTime;
-  ADM adm(N,dt);
+  ADM<true> adm(N,dt);
   startTime.stop();
   std::cout<<"Assembled the system in "<<startTime<<std::endl;
   adm.markAllBoundary();
@@ -67,9 +67,15 @@ int main(int argc,char **argv) {
   const size_t interiorSize = A.cols(), boundarySize = bExt.cols(), totalSize = interiorSize+boundarySize;
   std::cout<<"System size: "<<interiorSize<<", boundary size: "<<boundarySize<<", total: "<<totalSize<<std::endl;
   // Setup solver
-  Solver solver;
+  std::shared_ptr<Solver> solver;
+  if (interiorSize < 1.3e5) { // Up to h = 10^-1
+    solver = std::make_shared<SolverLU>();
+  } else {
+    PetscCall(PetscInitialize(&argc,&argv,NULL,NULL));
+    solver = std::make_shared<SolverPetsc>();
+  }
   Timer setupTime;
-  solver.setup(A);
+  solver->setup(A);
   setupTime.stop();
   std::cout<<"Factorised the system in "<<setupTime<<std::endl;
   // Initialize
@@ -81,12 +87,12 @@ int main(int argc,char **argv) {
   while (solTime() < TF) {
     solTime() += dt;
     Timer interpolateTime;
-    interpolate(refVal);
+    interpolate(refVal); 
     interpolateTime.stop();
     const Eigen::VectorXd uB = bExt.transpose()*refVal;
     const Eigen::VectorXd rhs = adm.RHS(uOld,uB,uBOld);
     Timer solveTime;
-    const Eigen::VectorXd u = solver.solve(rhs);
+    const Eigen::VectorXd u = solver->solve(rhs);
     solveTime.stop();
     checkSolution(A,u,rhs);
     // Compute norm and prepare next iteration 
